@@ -1,0 +1,39 @@
+[project]
+name = "sgdmeta"
+version = "0.1.0"
+description = "Metadata van Staten-Generaal Digitaal (1814-1995) offline doorzoekbaar"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "glidergeek" }]
+requires-python = ">=3.14"
+dependencies = [
+    "httpx[http2]>=0.28",
+    "rich>=14.0",
+]
+
+[project.urls]
+Data = "https://zenodo.org/records/22798123"
+
+[project.scripts]
+sgdmeta = "sgdmeta.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4",
+    "ruff>=0.14",
+]
+
+[build-system]
+requires = ["uv_build>=0.10,<0.11"]
+build-backend = "uv_build"
+
+[tool.ruff]
+line-length = 96
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
