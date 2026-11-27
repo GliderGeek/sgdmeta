@@ -5,6 +5,10 @@ browser, downloadt de database van Zenodo als die er nog niet is, en laat je een
 selectie maken, bekijken en exporteren naar Excel. Alles draait op je eigen
 computer.
 
+## TODO
+
+- filter deel ontwikkelen
+
 ## Gebruiken
 
 Download `sgdmeta-mac.zip` of `sgdmeta.exe` van de releases-pagina en start het.
