@@ -19,6 +19,11 @@ from pathlib import Path
 
 from .sru import NS
 
+# Versie van het schema, vastgelegd in `PRAGMA user_version`. Programma's die de
+# database lezen (zoals de app in ../app) gebruiken dit om te zien of ze het
+# bestand begrijpen. Ophogen bij elke wijziging die lezers merken.
+SCHEMA_VERSION = 1
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS document (
     identifier        TEXT PRIMARY KEY,
@@ -301,6 +306,8 @@ def rebuild_derived(
            FROM document d
            GROUP BY d.doctype, COALESCE(d.vergaderjaar, '')"""
     )
+    # Pas nu is de database compleet; een afgebroken build houdt versie 0.
+    con.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     con.commit()
 
 

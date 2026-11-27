@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>sgdmeta</title>
+<link rel="icon" href="/icon.png">
+<style>
+  :root {
+    --accent: #1e6b73; --accent-dark: #154f55; --accent-soft: #e6f1f2;
+    --text: #1f2328; --muted: #5b6470; --line: #d9dee3; --bg: #f4f6f8;
+    --warn: #9a6700; --warn-soft: #fff4d6; --err: #b42318; --err-soft: #fdecea;
+    --ok: #1a7f37; --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header, main { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  header { display: flex; align-items: center; gap: 12px; margin-top: 28px; margin-bottom: 18px; }
+  header img { width: 44px; height: 44px; }
+  header h1 { font-size: 22px; margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  main { margin-bottom: 40px; }
+
+  /* ---- stepper */
+  .stepper { display: flex; list-style: none; margin: 0 0 16px; padding: 0; }
+  .stepper li { flex: 1; display: flex; align-items: center; gap: 10px; }
+  .stepper li:not(:last-child)::after { content: ""; flex: 1; height: 2px; background: var(--line); margin: 0 12px; }
+  .stepper li.done:not(:last-child)::after { background: var(--accent); }
+  .stepper button { display: flex; align-items: center; gap: 10px; border: none; background: none; padding: 4px 2px;
+                    font-weight: 600; color: var(--muted); }
+  .stepper button:hover:not(:disabled) { background: none; color: var(--text); }
+  .stepper .n { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+                border: 2px solid var(--line); background: #fff; color: var(--muted); font-size: 14px; }
+  .stepper li.done .n { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .stepper li.active .n { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .stepper .n.check { border: none; background: none !important; }
+  .stepper .n.check svg { width: 30px; height: 30px; }
+  .stepper li.active button { color: var(--text); }
+  .stepper .lbl { text-align: left; }
+  .stepper .icon { margin-left: 6px; vertical-align: -3px; }
+
+  /* ---- status icon: green check or yellow warning, explained on hover */
+  .icon { display: inline-flex; width: 20px; height: 20px; flex: none; position: relative; }
+  .icon svg { width: 100%; height: 100%; }
+  .row .icon.hidden { display: inline-flex !important; visibility: hidden; } /* keep the field in place */
+  .icon[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50%; top: calc(100% + 8px);
+    transform: translateX(-50%); z-index: 10; width: max-content; max-width: 320px; white-space: pre-wrap;
+    background: var(--text); color: #fff; font-size: 13px; line-height: 1.4; padding: 6px 9px; border-radius: 6px; }
+
+  section { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 14px; }
+  h2 { font-size: 17px; margin: 0 0 6px; }
+  h3 { font-size: 15px; margin: 20px 0 8px; }
+  .hint { color: var(--muted); font-size: 14px; margin: 0 0 12px; }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row input[type=text] { flex: 1; min-width: 0; }
+  .row + .row { margin-top: 10px; }
+  .row .lbl { width: 110px; flex: none; color: var(--muted); font-size: 14px; }
+  input[type=text], select { font: inherit; padding: 9px 11px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  input[type=text]:focus, select:focus { outline: 2px solid var(--accent-soft); border-color: var(--accent); }
+  select { min-width: 320px; }
+  button { font: inherit; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--line);
+           background: #fff; color: var(--text); cursor: pointer; white-space: nowrap; }
+  button:hover:not(:disabled) { background: #f0f2f4; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  button.primary:hover:not(:disabled) { background: var(--accent-dark); }
+  button.wide { width: 100%; padding: 12px; margin-top: 14px; }
+  button.link { border: none; background: none; padding: 0; color: var(--accent); text-decoration: underline;
+                font: inherit; white-space: normal; text-align: left; }
+  button.link:hover:not(:disabled) { background: none; color: var(--accent-dark); }
+  /* input with a fixed suffix, e.g. the .xlsx of the file name */
+  .suffixed { flex: 1; display: flex; min-width: 0; }
+  .suffixed input { flex: 1; min-width: 0; border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .suffixed span { padding: 9px 11px; border: 1px solid var(--line); border-left: none; background: #f7f9fa;
+                   border-radius: 0 8px 8px 0; color: var(--muted); }
+  .bar { height: 8px; border-radius: 4px; background: var(--accent-soft); overflow: hidden; margin: 14px 0 6px; }
+  .bar div { height: 100%; width: 0; background: var(--accent); border-radius: 4px; transition: width .2s; }
+  .status { font-size: 14px; color: var(--muted); }
+  .msg { border-radius: 8px; padding: 10px 12px; margin-top: 12px; font-size: 14px; white-space: pre-wrap; }
+  .msg.ok { background: #e9f6ec; color: var(--ok); }
+  .msg.warn { background: var(--warn-soft); color: var(--warn); }
+  .msg.err { background: var(--err-soft); color: var(--err); }
+  .msg.info { background: var(--accent-soft); color: var(--accent-dark); }
+  .actions { display: flex; gap: 8px; margin-top: 12px; }
+  .actions button { flex: 1; }
+  .nav { display: flex; justify-content: space-between; margin-top: 4px; }
+  .nav button { min-width: 140px; }
+  .count { font-size: 14px; margin: 18px 0 8px; }
+  .count b { font-size: 16px; }
+  .tablewrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: left; padding: 5px 9px; border-bottom: 1px solid #eef1f4; vertical-align: top; }
+  th { position: sticky; top: 0; background: #f7f9fa; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td.title { min-width: 320px; }
+  td.nowrap { white-space: nowrap; }
+  td a { color: var(--accent); }
+  .hidden { display: none !important; }
+  .stopped { max-width: 520px; margin: 80px auto; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <img src="/icon.png" alt="">
+  <div>
+    <h1>sgdmeta</h1>
+    <p>Metadata van Staten-Generaal Digitaal (1814–1995) doorzoeken en exporteren.</p>
+  </div>
+</header>
+
+<main id="app">
+  <ol class="stepper" id="stepper">
+    <li data-step="1"><button><span class="n">1</span><span class="lbl">Database<span class="icon" id="stepIcon1"></span></span></button></li>
+    <li data-step="2"><button><span class="n">2</span><span class="lbl">Selectie</span></button></li>
+    <li data-step="3"><button><span class="n">3</span><span class="lbl">Exporteer</span></button></li>
+  </ol>
+
+  <!-- ============================================================ 1 database -->
+  <div class="step" data-step="1">
+    <section>
+      <h2>Database</h2>
+      <p class="hint">Dit programma werkt met een database met de metadata van alle documenten
+        (sgdmeta.sqlite3, ongeveer 1,5 GB).
+        Download het, of kies het bestand als je het al hebt.</p>
+
+      <div id="dlBox">
+        <button class="primary wide" id="dlStart" style="margin-top:4px">Download database (±1,5 GB)</button>
+        <div id="dlBusy" class="hidden">
+          <div class="bar"><div id="dlBar"></div></div>
+          <div class="row"><span class="status" id="dlStatus" style="flex:1"></span>
+            <button id="dlCancel">Stoppen</button></div>
+        </div>
+        <div class="msg err hidden" id="dlError"></div>
+        <h3>Of kies het bestand als je het al hebt</h3>
+      </div>
+
+      <div class="row">
+        <span class="lbl">Bestand</span>
+        <span class="icon" id="dbIcon"></span>
+        <input type="text" id="dbFile" placeholder="Pad naar sgdmeta.sqlite3" spellcheck="false">
+        <button id="dbPick">📄 Kies bestand…</button>
+      </div>
+      <p class="hint hidden" id="dbHint" style="margin:8px 0 0 146px">
+        Gevonden in Downloads: <button class="link" id="dbHintBtn" title="Dit bestand gebruiken"></button></p>
+    </section>
+    <div class="nav"><span></span><button class="primary" data-go="2">Volgende →</button></div>
+  </div>
+
+  <!-- ============================================================ 2 selectie -->
+  <div class="step hidden" data-step="2">
+    <section>
+      <h2>Selectie</h2>
+      <p class="hint">Kies welke documenten in de export komen.</p>
+      <div class="row">
+        <span class="lbl">Documenttype</span>
+        <select id="fDoctype"></select>
+      </div>
+
+      <div class="count" id="count"></div>
+      <div class="tablewrap"><table id="preview"><thead></thead><tbody></tbody></table></div>
+    </section>
+    <div class="nav"><button data-go="1">← Vorige</button><button class="primary" data-go="3">Volgende →</button></div>
+  </div>
+
+  <!-- ============================================================ 3 export -->
+  <div class="step hidden" data-step="3">
+    <section id="exportSection">
+      <h2>Exporteer</h2>
+      <div class="row">
+        <span class="lbl">Opslaan in</span>
+        <input type="text" id="outDir" spellcheck="false">
+        <button id="outPick">📂 Kies map…</button>
+      </div>
+      <div class="row">
+        <span class="lbl">Bestandsnaam</span>
+        <div class="suffixed"><input type="text" id="outName" spellcheck="false"><span>.xlsx</span></div>
+      </div>
+      <div class="msg warn hidden" id="tooMany"></div>
+      <button class="primary wide" id="exStart">Exporteer</button>
+      <div id="exBusy" class="hidden">
+        <div class="bar"><div id="exBar"></div></div>
+        <div class="status" id="exStatus"></div>
+      </div>
+      <div class="msg ok hidden" id="exSummary"></div>
+      <div class="msg err hidden" id="exError"></div>
+      <div class="actions hidden" id="exActions">
+        <button id="open">📄 Open bestand</button>
+        <button id="reveal">📁 Toon in map</button>
+      </div>
+    </section>
+    <div class="nav"><button data-go="2">← Vorige</button><span></span></div>
+  </div>
+</main>
+
+<div class="stopped hidden" id="stopped">
+  <h2>sgdmeta is gestopt</h2>
+  <p>Je kunt dit tabblad sluiten. Start sgdmeta opnieuw om verder te gaan.</p>
+</div>
+
+<script>
+"use strict";
+const T = new URLSearchParams(location.search).get("t");
+const $ = (id) => document.getElementById(id);
+const nf = new Intl.NumberFormat("nl-NL");
+let settings = {};
+let columns = [];
+let db = { ok: false };
+let step = 1;
+let busy = false;      // download or export running: no navigating away
+let lastPreview = null; // { count, excelMax }
+let stopped = false;
+
+async function api(path, body) {
+  let r;
+  try {
+    r = await fetch(path, { method: "POST", headers: { "X-Token": T, "Content-Type": "application/json" },
+                            body: JSON.stringify(body || {}) });
+  } catch (e) {
+    showStopped();
+    throw new Error("sgdmeta reageert niet meer.");
+  }
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+function showStopped() {
+  if (stopped) return;
+  stopped = true;
+  $("app").classList.add("hidden");
+  $("stopped").classList.remove("hidden");
+}
+
+function show(el, text) { el.textContent = text; el.classList.toggle("hidden", !text); }
+function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+function gb(n) { return (n / 2 ** 30).toLocaleString("nl-NL", { maximumFractionDigits: 2 }) + " GB"; }
+function pct(done, total) { return total ? Math.min(100, (100 * done) / total) : 0; }
+
+// pickInto opens a system dialog for a folder, or a file with extension ext.
+async function pickInto(input, prompt, ext) {
+  try {
+    const r = await api("/api/pick", { prompt, ext: ext || "" });
+    if (r.path) { input.value = r.path; input.dispatchEvent(new Event("input")); return true; }
+    if (r.unavailable) { alert("Het venster kon niet worden geopend. Plak het pad in het tekstveld."); input.focus(); }
+  } catch (e) { alert(e.message); }
+  return false;
+}
+
+// ============================================================ stepper
+function canGo(n) { return !busy && (n === 1 || db.ok); }
+
+function renderStepper() {
+  for (const li of document.querySelectorAll("#stepper li")) {
+    const n = +li.dataset.step;
+    li.classList.toggle("active", n === step);
+    li.classList.toggle("done", n < step || (n === 1 && db.ok && step !== 1));
+    li.querySelector("button").disabled = n !== step && !canGo(n);
+  }
+  for (const b of document.querySelectorAll("[data-go]")) b.disabled = !canGo(+b.dataset.go);
+  // A usable database: the step number becomes a check mark.
+  const n1 = document.querySelector('#stepper li[data-step="1"] .n');
+  n1.classList.toggle("check", db.ok);
+  n1.innerHTML = db.ok ? ICONS.ok : "1";
+}
+
+function go(n) {
+  if (n !== step && !canGo(n)) return;
+  step = n;
+  for (const el of document.querySelectorAll(".step")) el.classList.toggle("hidden", +el.dataset.step !== n);
+  if (n === 3) renderExportSummary();
+  renderStepper();
+  scrollTo({ top: 0 });
+}
+
+for (const li of document.querySelectorAll("#stepper li"))
+  li.querySelector("button").addEventListener("click", () => go(+li.dataset.step));
+for (const b of document.querySelectorAll("[data-go]"))
+  b.addEventListener("click", () => go(+b.dataset.go));
+
+function setBusy(on) { busy = on; renderStepper(); }
+
+// ============================================================ 1 database
+function renderDB() {
+  // An empty field gets no icon: the download button says what to do.
+  const status = db.ok ? "ok" : db.problem && $("dbFile").value.trim() ? "warn" : "";
+  setIcon($("dbIcon"), status, db.ok ? `Database gevonden: ${nf.format(db.documents)} documenten` : db.problem);
+  setIcon($("stepIcon1"), status === "warn" ? "warn" : ""); // ok shows in the step number
+  $("dbHintBtn").textContent = db.suggestion || "";
+  $("dbHint").classList.toggle("hidden", !db.suggestion || busy);
+  // Always visible; only usable when there is no database to use yet.
+  const have = db.ok || !!db.suggestion;
+  $("dlStart").disabled = have || busy;
+  $("dlStart").title = have ? "Er is al een database" : "";
+  renderStepper();
+}
+
+const ICONS = {
+  ok: '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="9" fill="#1a7f37"/>' +
+      '<path d="M6 10.5l2.6 2.6L14 7.6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 20 20"><path d="M10 2 L19 17.5 H1 Z" fill="#e3a008" stroke="#e3a008" stroke-width="1.5" stroke-linejoin="round"/>' +
+        '<path d="M10 7.5v4.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="14.8" r="1.1" fill="#fff"/></svg>',
+};
+
+// setIcon shows a status icon ("ok", "warn" or "" for none), with tip on hover.
+function setIcon(el, status, tip) {
+  el.innerHTML = ICONS[status] || "";
+  el.classList.toggle("hidden", !status);
+  if (tip && status) el.dataset.tip = tip; else delete el.dataset.tip;
+}
+
+// The user chose a folder (or file): use it if it holds a database.
+async function chooseDB() {
+  show($("dlError"), "");
+  try {
+    db = await api("/api/db/use", { path: $("dbFile").value });
+  } catch (e) {
+    db = { ok: false, problem: e.message };
+  }
+  renderDB();
+  if (db.ok) await loadMeta();
+}
+$("dbFile").addEventListener("input", debounce(chooseDB, 500));
+$("dbHintBtn").addEventListener("click", () => { $("dbFile").value = db.suggestion; chooseDB(); });
+$("dbPick").addEventListener("click", () => pickInto($("dbFile"), "Kies sgdmeta.sqlite3", "sqlite3"));
+
+$("dlStart").addEventListener("click", async () => {
+  show($("dlError"), "");
+  try {
+    await api("/api/download/start");
+    pollDownload();
+  } catch (e) { show($("dlError"), e.message); }
+});
+$("dlCancel").addEventListener("click", () => api("/api/download/cancel").catch(() => {}));
+
+function setDownloading(on) {
+  $("dlBusy").classList.toggle("hidden", !on);
+  for (const id of ["dbFile", "dbPick"]) $(id).disabled = on;
+  setBusy(on);
+  renderDB(); // sets the download button
+}
+
+async function pollDownload() {
+  let j;
+  try { j = await api("/api/download/status"); } catch (e) { return; }
+  setDownloading(j.running);
+  if (j.running) {
+    $("dlBar").style.width = pct(j.progress, j.total) + "%";
+    const p = Math.floor(pct(j.progress, j.total));
+    $("dlStatus").textContent =
+      j.stage === "verbinden" ? "Verbinden met Zenodo…" :
+      j.stage === "controleren" ? `Controleren… ${p}%` :
+      `Downloaden: ${gb(j.progress)} van ${gb(j.total)} (${p}%)`;
+    setTimeout(pollDownload, 500);
+    return;
+  }
+  if (j.error) { show($("dlError"), j.error); return; }
+  if (j.done) dbChanged();
+}
+
+// A downloaded database is in use: reload and continue with the selection.
+async function dbChanged() {
+  const s = await api("/api/state");
+  db = s.db;
+  $("dbFile").value = db.path || "";
+  renderDB();
+  if (!db.ok) return;
+  await loadMeta();
+  go(2);
+}
+
+// ============================================================ 2 selectie
+function currentView() {
+  const filters = [];
+  const dt = $("fDoctype").value;
+  if (dt) filters.push({ field: "doctype", op: "eq", value: dt });
+  return { filters };
+}
+
+function filterValue(view, field) {
+  const f = (view && view.filters || []).find((f) => f.field === field);
+  return f ? f.value : "";
+}
+
+const saveSettings = debounce(() => api("/api/settings", settings).catch(() => {}), 400);
+
+function collect() {
+  settings.view = currentView();
+  settings.outDir = $("outDir").value.trim();
+  settings.outName = $("outName").value;
+  saveSettings();
+  renderStepper();
+}
+
+async function loadMeta() {
+  const meta = await api("/api/meta");
+  columns = meta.columns;
+  const sel = $("fDoctype");
+  sel.textContent = "";
+  const total = meta.doctypes.reduce((a, o) => a + o.count, 0);
+  sel.append(new Option(`Alle documenttypen (${nf.format(total)})`, ""));
+  for (const o of meta.doctypes) sel.append(new Option(`${o.value} (${nf.format(o.count)})`, o.value));
+  const want = filterValue(settings.view, "doctype");
+  sel.value = [...sel.options].some((o) => o.value === want) ? want : "";
+
+  const head = $("preview").tHead;
+  head.textContent = "";
+  const tr = head.insertRow();
+  for (const c of columns) { const th = document.createElement("th"); th.textContent = c.label; tr.append(th); }
+  refreshPreview();
+}
+
+let previewSeq = 0;
+async function refreshPreview() {
+  const seq = ++previewSeq;
+  lastPreview = null;
+  $("count").textContent = "Bezig…";
+  let r;
+  try { r = await api("/api/preview", { view: currentView() }); }
+  catch (e) { if (seq === previewSeq) $("count").textContent = "⚠ " + e.message; return; }
+  if (seq !== previewSeq) return; // a newer request is under way
+  lastPreview = { count: r.count, excelMax: r.excelMax };
+
+  $("count").innerHTML = "";
+  const b = document.createElement("b");
+  b.textContent = nf.format(r.count);
+  $("count").append(b, ` ${r.count === 1 ? "document" : "documenten"}` +
+    (r.count > r.rows.length ? ` — hieronder de eerste ${r.rows.length}` : ""));
+
+  const body = $("preview").tBodies[0];
+  body.textContent = "";
+  for (const row of r.rows) {
+    const tr = body.insertRow();
+    row.forEach((v, i) => {
+      const td = tr.insertCell();
+      const key = columns[i].key;
+      td.className = key === "title" ? "title" : "nowrap";
+      if (key === "preferred_url" && /^https?:\/\//.test(v)) {
+        const a = document.createElement("a");
+        a.href = v; a.target = "_blank"; a.rel = "noopener"; a.textContent = "openen";
+        td.append(a);
+      } else td.textContent = v;
+    });
+  }
+  renderStepper();
+  if (step === 3) renderExportSummary();
+}
+
+$("fDoctype").addEventListener("change", () => { collect(); refreshPreview(); });
+
+// ============================================================ 3 export
+function renderExportSummary() {
+  const tooMany = lastPreview && lastPreview.count > lastPreview.excelMax;
+  show($("tooMany"), tooMany
+    ? `Dit zijn meer rijen dan Excel aankan (${nf.format(lastPreview.excelMax)}). Maak de selectie kleiner.` : "");
+}
+
+$("outDir").addEventListener("input", collect);
+$("outName").addEventListener("input", collect);
+$("outPick").addEventListener("click", () => pickInto($("outDir"), "Kies de map voor de export"));
+
+function setExporting(on) {
+  $("exBusy").classList.toggle("hidden", !on);
+  for (const id of ["exStart", "outPick", "outDir", "outName"]) $(id).disabled = on;
+  setBusy(on);
+}
+
+async function startExport(overwrite) {
+  for (const id of ["exSummary", "exError"]) show($(id), "");
+  $("exActions").classList.add("hidden");
+  collect();
+  try {
+    const r = await api("/api/export/start", { ...settings, overwrite: !!overwrite });
+    if (r.exists) {
+      if (confirm(`${r.outName} bestaat al in deze map. Overschrijven?`)) startExport(true);
+      return;
+    }
+    $("outName").value = r.outName; collect();
+    pollExport();
+  } catch (e) { show($("exError"), e.message); }
+}
+$("exStart").addEventListener("click", () => startExport(false));
+
+async function pollExport() {
+  let j;
+  try { j = await api("/api/export/status"); } catch (e) { return; }
+  setExporting(j.running);
+  if (j.running) {
+    $("exBar").style.width = pct(j.progress, j.total) + "%";
+    $("exStatus").textContent = j.stage === "tellen" ? "Rijen tellen…"
+      : `${nf.format(j.progress)} van ${nf.format(j.total)} rijen`;
+    setTimeout(pollExport, 400);
+    return;
+  }
+  if (!j.done) return;
+  if (j.error) { show($("exError"), j.error); return; }
+  show($("exSummary"), "✔ " + j.summary);
+  $("exActions").classList.remove("hidden");
+}
+
+$("open").addEventListener("click", () => api("/api/open").catch((e) => alert(e.message)));
+$("reveal").addEventListener("click", () => api("/api/reveal").catch((e) => alert(e.message)));
+$("reveal").textContent = /Windows/.test(navigator.userAgent) ? "📁 Toon in Verkenner"
+                        : /Mac/.test(navigator.userAgent) ? "📁 Toon in Finder" : "📁 Toon in map";
+
+// ============================================================ lifecycle
+setInterval(() => { if (!stopped) api("/api/ping").catch(() => {}); }, 5000);
+addEventListener("pagehide", () => navigator.sendBeacon("/api/bye?t=" + encodeURIComponent(T)));
+
+async function start() {
+  const s = await api("/api/state");
+  settings = s.settings;
+  db = s.db;
+  $("dbFile").value = db.path || "";
+
+  $("outDir").value = settings.outDir;
+  $("outName").value = settings.outName;
+  renderDB();
+
+  if (s.download.running) { go(1); pollDownload(); return; }
+  if (!db.ok) { go(1); return; }
+  await loadMeta();
+  if (s.export.running) { go(3); pollExport(); } else go(2);
+}
+
+api("/api/ping").catch(() => {});
+start().catch((e) => alert(e.message));
+</script>
+</body>
+</html>

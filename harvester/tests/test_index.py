@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from sgdmeta.index import (
+    SCHEMA_VERSION,
     Document,
     connect,
     parse_page,
@@ -41,6 +42,17 @@ def test_fts_vindt_documenten(tmp_path: Path):
             "SELECT title FROM document_fts WHERE document_fts MATCH 'Handelingen'"
         ).fetchall()
         assert hits
+    finally:
+        con.close()
+
+
+def test_schemaversie_na_rebuild(tmp_path: Path):
+    """Lezers van de database herkennen hem aan `user_version`."""
+    con = connect(tmp_path / "t.sqlite3")
+    try:
+        assert con.execute("PRAGMA user_version").fetchone()[0] == 0
+        rebuild_derived(con)
+        assert con.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     finally:
         con.close()
 
